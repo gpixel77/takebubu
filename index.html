@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Stright Timut🏹💖</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@400;600&display=swap");
+
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #fff0f5;
+        font-family: "Poppins", sans-serif;
+        touch-action: none;
+      }
+      canvas {
+        display: block;
+        background: radial-gradient(circle, #fff0f5 0%, #ffdee9 100%);
+      }
+
+      #ui {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: #ff1493;
+        font-weight: 600;
+        font-size: 24px;
+        z-index: 10;
+        text-shadow: 2px 2px white;
+      }
+
+      /* Reward Pop-up */
+      #reward {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        width: 85%;
+        max-width: 320px;
+        background: white;
+        border: 8px solid #ffb6c1;
+        border-radius: 30px;
+        padding: 15px;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(255, 20, 147, 0.3);
+        transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 100;
+        visibility: hidden;
+      }
+      #reward.show {
+        transform: translate(-50%, -50%) scale(1);
+        visibility: visible;
+      }
+      #reward img {
+        width: 100%;
+        height: auto;
+        max-height: 350px;
+        object-fit: cover;
+        border-radius: 20px;
+        background: #fdf2f5;
+      }
+      #reward p {
+        color: #ff1493;
+        font-family: "Dancing Script", cursive;
+        font-size: 26px;
+        margin: 15px 0 5px 0;
+      }
+
+      #close-btn {
+        position: absolute;
+        top: -10px;
+        right: -10px;
+        background: #ff1493;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      #instructions {
+        position: absolute;
+        bottom: 20px;
+        width: 100%;
+        text-align: center;
+        color: #db7093;
+        font-weight: 600;
+        font-size: 14px;
+        pointer-events: none;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="ui">Score: <span id="score">0</span> ❤️</div>
+
+    <audio id="bgMusic" loop preload="auto">
+      <source src="backs1.mp3" type="audio/mpeg" />
+    </audio>
+
+    <div id="reward">
+      <button id="close-btn" onclick="closeReward()">X</button>
+      <img id="photo-target" src="" alt="Foto Pacar" />
+      <p>Timut✨❤️</p>
+    </div>
+
+    <div id="instructions">Bidik Hatinya, dapatkan 10 Timut!</div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d");
+      const scoreEl = document.getElementById("score");
+      const rewardBox = document.getElementById("reward");
+      const photoTarget = document.getElementById("photo-target");
+      const bgMusic = document.getElementById("bgMusic");
+
+      let score = 0;
+      let isDragging = false;
+      let isMusicStarted = false;
+      let isMobile = false;
+      let currentX, currentY;
+      let particles = [];
+      let arrow = { x: 0, y: 0, vx: 0, vy: 0, active: false };
+      let target = { x: 0, y: 0, dx: 3, dy: 3, size: 40 };
+
+      // DAFTAR FOTO
+      const daftarFoto = [
+        "12.jpeg",
+        "13.jpeg",
+        "14.jpeg",
+        "15.jpeg",
+        "16.jpeg",
+        "17.jpeg",
+        "18.jpeg",
+        "19.jpeg",
+        "20.jpeg",
+        "21.jpeg",
+        "2.jpeg",
+      ];
+
+      function initLayout() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        isMobile = canvas.height > canvas.width;
+
+        if (isMobile) {
+          arrow.x = canvas.width / 2;
+          arrow.y = canvas.height - 100;
+          target.x = canvas.width / 2;
+          target.y = 150;
+        } else {
+          arrow.x = 150;
+          arrow.y = canvas.height / 2;
+          target.x = canvas.width - 150;
+          target.y = canvas.height / 2;
+        }
+      }
+
+      class Particle {
+        constructor(x, y) {
+          this.x = x;
+          this.y = y;
+          this.size = Math.random() * 4 + 1;
+          this.speedX = (Math.random() - 0.5) * 2;
+          this.speedY = (Math.random() - 0.5) * 2;
+          this.color = `rgba(255, ${Math.random() * 100 + 150}, 200, 0.8)`;
+        }
+        update() {
+          this.x += this.speedX;
+          this.y += this.speedY;
+          this.size *= 0.96;
+        }
+        draw() {
+          ctx.fillStyle = this.color;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawHeart(x, y, size, color, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(size, 0);
+        ctx.bezierCurveTo(size, -size, 0, -size * 1.5, -size / 2, 0);
+        ctx.bezierCurveTo(0, size * 1.5, size, size, size, 0);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      function drawBow() {
+        const bx = isMobile ? canvas.width / 2 : 150;
+        const by = isMobile ? canvas.height - 100 : canvas.height / 2;
+        ctx.strokeStyle = "#db7093";
+        ctx.lineWidth = 8;
+        ctx.lineCap = "round";
+        ctx.save();
+        ctx.translate(bx, by);
+        if (isMobile) ctx.rotate(-Math.PI / 2);
+        ctx.beginPath();
+        ctx.arc(-30, 0, 80, -Math.PI / 2.2, Math.PI / 2.2);
+        ctx.stroke();
+        ctx.strokeStyle = "#ffb6c1";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-30, -75);
+        if (isDragging) {
+          if (isMobile) ctx.lineTo(currentY - by, -(currentX - bx));
+          else ctx.lineTo(currentX - bx, currentY - by);
+        } else {
+          ctx.lineTo(-30, 75);
+        }
+        ctx.lineTo(-30, 75);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawArrow(x, y, vx, vy) {
+        let angle = Math.atan2(vy, vx);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.strokeStyle = "#8b4513";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(-60, 0);
+        ctx.lineTo(0, 0);
+        ctx.stroke();
+        drawHeart(12, 0, 10, "#ff1493", 0);
+        ctx.restore();
+      }
+
+      function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach((p, i) => {
+          p.update();
+          p.draw();
+          if (p.size < 0.3) particles.splice(i, 1);
+        });
+
+        if (isMobile) {
+          target.x += target.dx;
+          if (target.x > canvas.width - 50 || target.x < 50) target.dx *= -1;
+          drawHeart(target.x, target.y, target.size, "#ff69b4", Math.PI / 2);
+        } else {
+          target.y += target.dy;
+          if (target.y > canvas.height - 100 || target.y < 100) target.dy *= -1;
+          drawHeart(target.x, target.y, target.size, "#ff69b4", Math.PI);
+        }
+
+        if (arrow.active) {
+          arrow.x += arrow.vx;
+          arrow.y += arrow.vy;
+          drawArrow(arrow.x, arrow.y, arrow.vx, arrow.vy);
+          if (Math.random() > 0.4)
+            particles.push(new Particle(arrow.x, arrow.y));
+
+          let dist = Math.sqrt(
+            (arrow.x - target.x) ** 2 + (arrow.y - target.y) ** 2,
+          );
+          if (dist < target.size + 20) {
+            score++;
+            scoreEl.innerText = score;
+            showRandomPhoto();
+            resetArrow();
+          }
+          if (
+            arrow.x < 0 ||
+            arrow.x > canvas.width ||
+            arrow.y < 0 ||
+            arrow.y > canvas.height
+          )
+            resetArrow();
+        } else if (isDragging) {
+          const bx = isMobile ? canvas.width / 2 : 150;
+          const by = isMobile ? canvas.height - 100 : canvas.height / 2;
+          drawArrow(bx, by, bx - currentX, by - currentY);
+        }
+        drawBow();
+        requestAnimationFrame(update);
+      }
+
+      function showRandomPhoto() {
+        const randomIndex = Math.floor(Math.random() * daftarFoto.length);
+        const fotoTerpilih = daftarFoto[randomIndex];
+        photoTarget.src = fotoTerpilih;
+        photoTarget.onload = () => {
+          rewardBox.classList.add("show");
+        };
+        photoTarget.onerror = () => {
+          rewardBox.classList.add("show");
+        };
+      }
+
+      function closeReward() {
+        rewardBox.classList.remove("show");
+      }
+
+      function resetArrow() {
+        arrow.active = false;
+        arrow.x = isMobile ? canvas.width / 2 : 150;
+        arrow.y = isMobile ? canvas.height - 100 : canvas.height / 2;
+      }
+
+      // MODIFIKASI DISINI: Pemicu Audio di HandleStart
+      const handleStart = (e) => {
+        if (!isMusicStarted) {
+          bgMusic
+            .play()
+            .then(() => {
+              isMusicStarted = true;
+            })
+            .catch((err) =>
+              console.log("Menunggu interaksi user untuk musik..."),
+            );
+        }
+        if (rewardBox.classList.contains("show")) return;
+        isDragging = true;
+        updateCoords(e);
+      };
+
+      const handleMove = (e) => {
+        if (isDragging) updateCoords(e);
+      };
+
+      const handleEnd = (e) => {
+        if (isDragging) {
+          isDragging = false;
+          arrow.active = true;
+          const bx = isMobile ? canvas.width / 2 : 150;
+          const by = isMobile ? canvas.height - 100 : canvas.height / 2;
+          arrow.vx = (bx - currentX) * 0.18;
+          arrow.vy = (by - currentY) * 0.18;
+        }
+      };
+
+      function updateCoords(e) {
+        currentX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+        currentY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+      }
+
+      window.addEventListener("mousedown", handleStart);
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleEnd);
+      window.addEventListener("touchstart", handleStart, { passive: false });
+      window.addEventListener("touchmove", handleMove, { passive: false });
+      window.addEventListener("touchend", handleEnd);
+      window.addEventListener("resize", initLayout);
+
+      initLayout();
+      update();
+    </script>
+  </body>
+</html>
